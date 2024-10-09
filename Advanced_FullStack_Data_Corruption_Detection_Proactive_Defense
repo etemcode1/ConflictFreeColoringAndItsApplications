@@ -1,0 +1,251 @@
+Here are **5 advanced code examples** focusing on detecting data corruption, implementing proactive responses, robust defenses, and competent countermeasures in a **full-stack and web development** environment. Each example is designed to address different aspects of data integrity, accuracy, and security:
+
+---
+
+### 1. **Hash-Based Data Integrity Checker (Node.js + Express)**  
+This example implements a hash-based checker to detect data corruption by comparing the hash of stored data with the recalculated hash of incoming data.
+
+```javascript
+const crypto = require('crypto');
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+// Simulating stored data with a hash for integrity checking
+let storedData = { data: "Sensitive Information", hash: "" };
+
+function generateHash(data) {
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+// Initialize data with hash
+storedData.hash = generateHash(storedData.data);
+
+app.post('/check-integrity', (req, res) => {
+  const incomingData = req.body.data;
+  const incomingHash = generateHash(incomingData);
+
+  if (incomingHash === storedData.hash) {
+    res.status(200).send("Data is intact!");
+  } else {
+    res.status(400).send("Data corruption detected!");
+    // Implement proactive responses (e.g., rollback, alert)
+  }
+});
+
+app.listen(3000, () => console.log("Server running on port 3000"));
+```
+
+---
+
+### 2. **Proactive Data Backup and Restore System (Python + Flask + MongoDB)**  
+This code shows a proactive backup system that automatically creates snapshots of the database for defense against data corruption.
+
+```python
+from flask import Flask, jsonify
+from pymongo import MongoClient
+import time
+
+app = Flask(__name__)
+
+# MongoDB connection
+client = MongoClient('mongodb://localhost:27017/')
+db = client['data_store']
+collection = db['data']
+
+# Create data snapshots every 5 minutes
+def backup_data():
+    snapshot_collection = db['data_backup']
+    while True:
+        snapshot_collection.insert_many(collection.find())
+        print("Data backup created")
+        time.sleep(300)
+
+@app.route('/restore-data', methods=['POST'])
+def restore_data():
+    snapshot_collection = db['data_backup']
+    # Restore latest backup if corruption detected
+    collection.drop()  # Remove current corrupted data
+    collection.insert_many(snapshot_collection.find().sort([("_id", -1)]).limit(1))
+    return jsonify({'message': 'Data restored from backup!'})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+    # backup_data() can be run as a separate background process
+```
+
+---
+
+### 3. **Corruption Detection in File Uploads (PHP + JavaScript)**  
+A PHP example that checks file uploads for corruption using file size validation and hash comparison.
+
+```php
+<?php
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $uploadedFile = $_FILES['file'];
+    $originalFileSize = $_POST['originalFileSize'];  // Simulated metadata
+
+    // Check file size integrity
+    if ($uploadedFile['size'] != $originalFileSize) {
+        echo json_encode(["status" => "error", "message" => "File corruption detected!"]);
+        return;
+    }
+
+    // Check file hash for integrity (SHA256)
+    $hash = hash_file('sha256', $uploadedFile['tmp_name']);
+    if ($hash !== $_POST['originalFileHash']) {
+        echo json_encode(["status" => "error", "message" => "File hash mismatch, corruption detected!"]);
+    } else {
+        move_uploaded_file($uploadedFile['tmp_name'], 'uploads/' . $uploadedFile['name']);
+        echo json_encode(["status" => "success", "message" => "File uploaded successfully!"]);
+    }
+}
+?>
+```
+
+**HTML and JavaScript to Handle Upload:**
+
+```html
+<form id="uploadForm" enctype="multipart/form-data">
+    <input type="file" name="file" id="fileInput">
+    <button type="submit">Upload</button>
+</form>
+
+<script>
+document.getElementById('uploadForm').onsubmit = function(e) {
+    e.preventDefault();
+    var file = document.getElementById('fileInput').files[0];
+
+    // Calculate file hash for corruption detection
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var buffer = e.target.result;
+        var hash = CryptoJS.SHA256(CryptoJS.lib.WordArray.create(buffer)).toString();
+
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('originalFileSize', file.size);
+        formData.append('originalFileHash', hash);
+
+        fetch('upload.php', {
+            method: 'POST',
+            body: formData
+        }).then(response => response.json()).then(data => {
+            console.log(data);
+        });
+    }
+    reader.readAsArrayBuffer(file);
+};
+</script>
+```
+
+---
+
+### 4. **Full-Stack Data Corruption Alert System (Node.js + React + WebSockets)**  
+This example demonstrates a proactive full-stack solution that detects data corruption and sends real-time alerts to the client using WebSockets.
+
+**Backend (Node.js + WebSocket):**
+
+```javascript
+const WebSocket = require('ws');
+const crypto = require('crypto');
+const express = require('express');
+const app = express();
+const wss = new WebSocket.Server({ port: 8080 });
+
+let storedHash = crypto.createHash('sha256').update('Initial Data').digest('hex');
+
+// WebSocket server to push alerts to client
+wss.on('connection', ws => {
+  console.log("Client connected");
+
+  ws.on('message', message => {
+    const incomingHash = crypto.createHash('sha256').update(message).digest('hex');
+    if (incomingHash !== storedHash) {
+      ws.send("ALERT: Data corruption detected!");
+    } else {
+      ws.send("Data is intact!");
+    }
+  });
+});
+
+app.listen(3000, () => console.log('Server listening on port 3000'));
+```
+
+**Frontend (React):**
+
+```javascript
+import React, { useState, useEffect } from 'react';
+
+function App() {
+  const [alert, setAlert] = useState("");
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8080');
+    ws.onmessage = (message) => {
+      setAlert(message.data);
+    };
+    ws.onopen = () => {
+      // Send data to server for integrity check
+      ws.send("Corrupted or Clean Data Here");
+    };
+  }, []);
+
+  return (
+    <div>
+      <h1>Data Corruption Alert System</h1>
+      <p>{alert}</p>
+    </div>
+  );
+}
+
+export default App;
+```
+
+---
+
+### 5. **Corruption Prevention through Data Redundancy (MySQL + PHP)**  
+This PHP script uses database replication as a defensive measure against data corruption by automatically restoring from replicas if the primary data is corrupted.
+
+```php
+<?php
+function check_corruption($data) {
+    // Perform some data validation logic (simplified for example)
+    return (is_array($data) && !empty($data));
+}
+
+// Connect to primary and replica databases
+$primary_db = new mysqli("localhost", "user", "pass", "primary_db");
+$replica_db = new mysqli("localhost", "user", "pass", "replica_db");
+
+// Fetch data from primary database
+$result = $primary_db->query("SELECT * FROM important_data");
+$data = $result->fetch_assoc();
+
+// Check for data corruption
+if (!check_corruption($data)) {
+    echo "Primary data is corrupted! Restoring from replica...";
+
+    // Fetch from replica
+    $replica_result = $replica_db->query("SELECT * FROM important_data");
+    $replica_data = $replica_result->fetch_assoc();
+
+    // Restore to primary database
+    if (check_corruption($replica_data)) {
+        $primary_db->query("INSERT INTO important_data VALUES (" . implode(", ", $replica_data) . ")");
+        echo "Data restored successfully!";
+    } else {
+        echo "Replica data also corrupted. Manual intervention required!";
+    }
+} else {
+    echo "Data is intact!";
+}
+?>
+```
+
+---
+
+### **Suggested Smart File Name**:  
+**"Advanced_FullStack_Data_Corruption_Detection_Proactive_Defense"**
+
+These examples cover **data corruption detection**, **proactive response mechanisms**, and **robust defense strategies** that could be useful in a real-world, full-stack environment, ensuring accurate data and reliable systems.
